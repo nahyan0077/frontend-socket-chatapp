@@ -2,6 +2,10 @@ import React from "react";
 import { axiosInstance } from "../axios";
 import { Field, Formik, Form, ErrorMessage } from "formik";
 import { signUpValidation } from "../validationSchema/signUpValidation";
+import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { Link } from "react-router-dom";
+import { setUserData } from "../redux/features/userSlice";
 
 interface FormValues {
 	username: string;
@@ -11,6 +15,9 @@ interface FormValues {
 }
 
 function Signup() {
+	const dispatch = useDispatch();
+	const navigate = useNavigate();
+
 	const initialValues: FormValues = {
 		username: "",
 		email: "",
@@ -21,20 +28,15 @@ function Signup() {
 	const handleSubmit = async (userData: FormValues) => {
 		try {
 			const response = await axiosInstance.post("/sign-up", userData);
-      
-      console.log("response for back user",response);
-      
-      if (response.data.success) {
-        
-      }
 
+			navigate("/");
 		} catch (error: any) {
 			console.log(error);
 		}
 	};
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-zinc-100 px-4">
+		<div className="min-h-screen flex items-center justify-center bg-green-500 px-4">
 			<div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
 				<div className="mb-6">
 					<div className="bg-green-500 rounded-t-lg p-4">
@@ -63,8 +65,11 @@ function Signup() {
 								required
 								className="mt-1 block w-full px-3 py-2 border border-zinc-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
 							/>
-              <ErrorMessage name="username" component="small" className="text-red-500" />
-
+							<ErrorMessage
+								name="username"
+								component="small"
+								className="text-red-500"
+							/>
 						</div>
 						<div className="mb-4">
 							<label
@@ -80,8 +85,11 @@ function Signup() {
 								required
 								className="mt-1 block w-full px-3 py-2 border border-zinc-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
 							/>
-              <ErrorMessage name="email" component="small" className="text-red-500" />
-
+							<ErrorMessage
+								name="email"
+								component="small"
+								className="text-red-500"
+							/>
 						</div>
 						<div className="mb-4">
 							<label
@@ -97,8 +105,11 @@ function Signup() {
 								required
 								className="mt-1 block w-full px-3 py-2 border border-zinc-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
 							/>
-              <ErrorMessage name="password" component="small" className="text-red-500" />
-
+							<ErrorMessage
+								name="password"
+								component="small"
+								className="text-red-500"
+							/>
 						</div>
 						<div className="mb-6">
 							<label
@@ -114,8 +125,11 @@ function Signup() {
 								required
 								className="mt-1 block w-full px-3 py-2 border border-zinc-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
 							/>
-              <ErrorMessage name="cpassword" component="small" className="text-red-500" />
-
+							<ErrorMessage
+								name="cpassword"
+								component="small"
+								className="text-red-500"
+							/>
 						</div>
 						<div>
 							<button
@@ -130,12 +144,12 @@ function Signup() {
 				<div className="mt-6 text-center">
 					<p className="text-sm">
 						Already have an account?{" "}
-						<a
-							href="#"
+						<Link
+							to={"/"}
 							className="text-green-600 hover:text-green-500 font-medium"
 						>
 							SIGN IN
-						</a>
+						</Link>
 					</p>
 				</div>
 			</div>
