@@ -1,11 +1,10 @@
-import React from "react";
+
 import { axiosInstance } from "../axios";
 import { Field, Formik, Form, ErrorMessage } from "formik";
 import { signUpValidation } from "../validationSchema/signUpValidation";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
 import { Link } from "react-router-dom";
-import { setUserData } from "../redux/features/userSlice";
+
 
 interface FormValues {
 	username: string;
@@ -15,7 +14,7 @@ interface FormValues {
 }
 
 function Signup() {
-	const dispatch = useDispatch();
+
 	const navigate = useNavigate();
 
 	const initialValues: FormValues = {
@@ -27,7 +26,7 @@ function Signup() {
 
 	const handleSubmit = async (userData: FormValues) => {
 		try {
-			const response = await axiosInstance.post("/sign-up", userData);
+			await axiosInstance.post("/sign-up", userData);
 
 			navigate("/");
 		} catch (error: any) {
