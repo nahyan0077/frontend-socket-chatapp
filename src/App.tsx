@@ -1,4 +1,5 @@
 import "./index.css";
+import "./App.css";
 import { axiosInstance } from "./axios";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -23,8 +24,8 @@ function App() {
 		<>
 		<Router>
 			<Routes>
-				<Route path="/" element={ !userExists ?  <Login/> : <Navigate to="/chat" />  } />
-				<Route path="/signup" element={ !userExists ?  <Signup/> : <Navigate to="/chat" /> } />
+				<Route path="/" element={ <Login/>  } />
+				<Route path="/signup" element={  <Signup/>  } />
 				<Route path="/chat" element={ userExists ? <Chat/> : <Navigate to='/' /> } />
 			</Routes>
 		</Router>

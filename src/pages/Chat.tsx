@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState, ChangeEvent } from "react";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { Confirm } from "react-admin";
 import { axiosInstance } from "../axios";
@@ -6,34 +6,214 @@ import { useNavigate } from "react-router-dom";
 import SendIcon from "@mui/icons-material/Send";
 import { useDispatch, useSelector } from "react-redux";
 import { setUserData } from "../redux/features/userSlice";
+// import { setOnlineUsers } from "../redux/features/onlineUserSlice";
 import PersonIcon from "@mui/icons-material/Person";
 import { BsInstagram } from "react-icons/bs";
 import { FaGithub } from "react-icons/fa";
 import { FaLinkedin } from "react-icons/fa6";
+import { Socket, io } from "socket.io-client";
+
+interface ChatMessage {
+	_id: string;
+	chatId: string;
+	content: string;
+	senderId: string;
+	createdAt: Date;
+	updatedAt: Date;
+	date: Date;
+}
+
+const SOCKET_SERVER_URL = "http://localhost:3000";
 
 const Chat: React.FC = () => {
 	const [open, setOpen] = useState(false);
 	const [openProfile, setOpenProfile] = useState(false);
 	const navigate = useNavigate();
 	const dispatch = useDispatch();
+	const [allUsers, setAllUsers] = useState([]);
+	const [chatRoom, setChatRoom] = useState({
+		senderId: "",
+		receiverId: "",
+		chatId: "",
+	});
 
-    const fetchUsereData = useSelector((state: any)=>state.user.userData)
-    
-    
+	const [message, setMessage] = useState("");
+	const [receiverData, setReceiverData] = useState({
+		username: "",
+		profile: "",
+	});
+
+	const fetchUsereData = useSelector((state: any) => state.user.userData);
+	const [onlineUsers, setOnlineUsers] = useState([]);
+	const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+	const [typing, setTyping] = useState< {
+		msg: string,
+		senderId: string,
+		receiverId: string,
+		status: boolean,
+	} >();
+
+	const messagesEndRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		scrollToBottom();
+	}, [chatMessages]);
+
+	const scrollToBottom = () => {
+		if (messagesEndRef.current) {
+			messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+		}
+	};
+
 	const logout = async () => {
 		await axiosInstance
 			.get("/log-out")
 			.then(() => {
-				dispatch(setUserData(null));
 				navigate("/");
+				dispatch(setUserData(null));
 			})
 			.catch((error: any) => {
 				console.error("Logout error:", error);
 			});
 	};
+	useEffect(() => {
+		const getAllUser = async () => {
+			let response = await axiosInstance.get("/chats/get-all-users");
+			const filteredUsers = response.data.data.filter(
+				(user: any) => user._id !== fetchUsereData._id
+			);
+			setAllUsers(filteredUsers);
+			if (filteredUsers.length > 0 && !receiverData.username) {
+				setReceiverData({
+					username: filteredUsers[0].username,
+					profile: filteredUsers[0].profile,
+				});
+			}
+		};
+		getAllUser();
+	}, []);
+
+	useEffect(() => {
+		const socket: Socket = io(SOCKET_SERVER_URL);
+
+		socket.on("connect", () => {
+			console.log("connected to server");
+			socket.emit("add-online-users", fetchUsereData._id);
+		});
+
+		socket.on("getOnlineUsers", (data: []) => {
+			setOnlineUsers(data);
+		});
+
+		socket.on("get-messages", (reseivedData: any) => {
+			console.log("chat ress dat", reseivedData);
+
+			setChatMessages((prev) => [...prev, reseivedData]);
+		});
+
+		socket.on("typing", (res: any) => {
+			console.log(res,"typing res");
+			
+			setTyping(res);
+		});
+
+
+		return () => {
+			socket.disconnect();
+		};
+	}, []);
+
+	const chatWithUser = async (reciver_id: string) => {
+		const newChatRoom = {
+			sender_id: fetchUsereData._id,
+			reciver_id,
+		};
+
+		const response = await axiosInstance.post(
+			"/chats/create-chat-room",
+			newChatRoom
+		);
+
+		console.log(response, "chat response");
+		if (response.data.success) {
+			setChatRoom({
+				senderId: fetchUsereData._id,
+				receiverId: reciver_id,
+				chatId: response.data.chatRoom._id,
+			});
+
+			setReceiverData({
+				username: response.data.reciversData.username,
+				profile: response.data.reciversData.profile,
+			});
+
+			const allMsgRes = await axiosInstance.get(
+				`/message/get-all-messages/${chatRoom.chatId}`
+			);
+
+			setChatMessages(allMsgRes.data.allMessages);
+		}
+	};
+	useEffect(() => {
+		const fetchMessages = async () => {
+			if (chatRoom.chatId) {
+				const allMsgRes = await axiosInstance.get(
+					`/message/get-all-messages/${chatRoom.chatId}`
+				);
+
+				setChatMessages(allMsgRes.data.allMessages);
+			}
+		};
+
+		fetchMessages();
+	}, [chatRoom.chatId]);
+
+	const sendMessage = async () => {
+		console.log(message, "message issss");
+		if (message.trim()) {
+			let msgBody = {
+				chatId: chatRoom.chatId,
+				content: message,
+				senderId: fetchUsereData._id,
+			};
+
+			const socket: Socket = io(SOCKET_SERVER_URL);
+
+			socket.emit("send-message", {
+				...msgBody,
+				receiverId: chatRoom.receiverId,
+			});
+
+			const response = await axiosInstance.post(
+				"/message/create-message",
+				msgBody
+			);
+
+			const allMsgRes = await axiosInstance.get(
+				`/message/get-all-messages/${chatRoom.chatId}`
+			);
+			setChatMessages(allMsgRes.data.allMessages);
+
+			scrollToBottom();
+
+			setMessage("");
+		}
+	};
+
+	const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+		setMessage(e.target.value);
+		const socket: Socket = io(SOCKET_SERVER_URL);
+
+		socket.emit("typing", {
+			msg: "typing",
+			senderId: chatRoom.senderId,
+			receiverId: chatRoom.receiverId,
+			status: true,
+		});
+	};
 
 	return (
-		<div className="flex flex-col md:flex-row h-screen">
+		<div className="flex flex-col md:flex-row h-[100vh] ">
 			<Confirm
 				className="0"
 				isOpen={open}
@@ -59,7 +239,6 @@ const Chat: React.FC = () => {
 						/>
 						{/* Logout Button Icon */}
 						<div className="flex items-center p-2">
-							{/* Person Icon */}
 							<div
 								onClick={() => setOpenProfile(!openProfile)}
 								className="text-white  p-2"
@@ -72,23 +251,28 @@ const Chat: React.FC = () => {
 							</div>
 						</div>
 					</div>
-					{/* Body */}
-					{/* User Item (Replace with dynamic data) */}
-					<div className="border-t border-gray-400"></div>
-					<div className="flex items-center px-5 py-5 bg-green-800 hover:bg-green-900 text-green-200">
-						{/* User Profile Image */}
-						<img
-							src="https://media.istockphoto.com/id/1473780957/vector/default-avatar-profile-user-profile-icon-business-people-profile-picture-portrait-user.jpg?s=1024x1024&w=is&k=20&c=puf1EPY0cx9piSfK1e65kYpZC91_8-QSevdyfGukWvQ="
-							alt="User Profile"
-							className="w-10 h-10 rounded-full mr-2"
-						/>
-						<div className="flex-1">User 1</div>{" "}
-						{/* User name (Replace with dynamic data) */}
-						<div className="w-2 h-2 bg-green-00 rounded-full mr-2"></div>{" "}
-						{/* Green mark indicating online status */}
-					</div>
-					<div className="border-t border-gray-400"></div>;{/* Footer */}
-					{/* <div className="bg-green-700 text-white p-9 flex items-center "></div> */}
+					{/* Body users list */}
+
+					{allUsers.map((data: any) => (
+						<React.Fragment key={data._id}>
+							<div
+								onClick={() => chatWithUser(data._id)}
+								className={`flex items-center px-5 py-5 bg-green-900 hover:bg-green-700 text-green-200`}
+								key={data._id}
+							>
+								<img
+									src={data.profile}
+									alt="User Profile"
+									className="w-10 h-10 rounded-full mr-2"
+								/>
+								<div className="flex-1 ml-3">{data.username}</div>{" "}
+								{onlineUsers.some((user: any) => user.userId === data._id) && (
+									<div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+								)}
+							</div>
+							<div className="border-t -mb-5 border-gray-400"></div>;
+						</React.Fragment>
+					))}
 				</div>
 			</div>
 
@@ -100,15 +284,19 @@ const Chat: React.FC = () => {
 						<div className="flex items-center space-x-2">
 							{/* User Profile Image */}
 							<img
-								src="https://media.istockphoto.com/id/1473780957/vector/default-avatar-profile-user-profile-icon-business-people-profile-picture-portrait-user.jpg?s=1024x1024&w=is&k=20&c=puf1EPY0cx9piSfK1e65kYpZC91_8-QSevdyfGukWvQ="
+								src={receiverData.profile}
 								alt="User Profile"
-								className="w-8 h-8 rounded-full"
+								className="w-8 h-8 mr-2 rounded-full"
 							/>
 							{/* User Name */}
-							<div className="font-semibold">User Name</div>
+							<div className="font-semibold">{receiverData.username}</div>
 						</div>
 						{/* Online Status */}
-						<div className="text-xs text-green-200">Online</div>
+						<div>
+							{typing && typing.status ? (
+								<div className="text-xs text-green-200">typing....</div>
+							) : null}
+						</div>
 					</div>
 					{/* Chat Body */}
 					<div
@@ -117,34 +305,55 @@ const Chat: React.FC = () => {
 						style={{ backgroundImage: "url(path/to/your/image.jpg)" }}
 					>
 						<div className="flex flex-col gap-2">
-							<div className="flex justify-end">
-								<div className="relative bg-green-900 text-white p-2 rounded-lg max-w-xs  flex flex-col items-end">
-									<div className="message-content">
-										Hello, how can I help you?
-									</div>
-									<span className="text-xs text-white self-end">10:00 AM</span>
-								</div>
-							</div>
-							<div className="flex">
-								<div className="relative bg-white text-black p-2 rounded-lg max-w-xs flex flex-col items-start">
-									<div className="message-content">
-										Sure, I have some options for you.
-									</div>
-									<span className="text-xs text-black self-start">
-										10:05 AM
-									</span>
-								</div>
-							</div>
+							{chatMessages.map((msg: any) => (
+								<React.Fragment key={msg._id}>
+									{msg.senderId == fetchUsereData._id && (
+										<div className="flex justify-end">
+											<div className="relative bg-green-900 text-white p-2 rounded-lg max-w-xs  flex flex-col items-end">
+												<div className="message-content">{msg.content}</div>
+												<span className="text-xs text-white self-end">
+													{new Date(msg.createdAt).toLocaleTimeString([], {
+														hour: "2-digit",
+														minute: "2-digit",
+													})}
+												</span>
+											</div>
+										</div>
+									)}
+
+									{msg.senderId == chatRoom.receiverId && (
+										<div className="flex">
+											<div className="relative bg-white text-black p-2 rounded-lg max-w-xs flex flex-col items-start">
+												<div className="message-content" ref={messagesEndRef}>
+													{msg.content}
+												</div>
+												<span className="text-xs text-black self-start">
+													{new Date(msg.createdAt).toLocaleTimeString([], {
+														hour: "2-digit",
+														minute: "2-digit",
+													})}
+												</span>
+											</div>
+										</div>
+									)}
+								</React.Fragment>
+							))}
 						</div>
 					</div>
 					{/* Chat Footer */}
 					<div className="bg-green-700 text-white p-4 flex items-center ">
 						<input
 							type="text"
+							value={message}
+							onChange={handleInputChange}
 							placeholder="Type your message..."
 							className="w-full  px-3 py-2 border bg-green-800 border-green-800 rounded-3xl focus:outline-none "
 						/>
-						<div id="sendMessage" className=" text-white p-2 ml-2 bg-green-700">
+						<div
+							onClick={sendMessage}
+							id="sendMessage"
+							className=" text-white p-2 ml-2 bg-green-700"
+						>
 							<SendIcon />
 						</div>
 					</div>
@@ -162,10 +371,15 @@ const Chat: React.FC = () => {
 							/>
 						</div>
 						<div className="mx-auto w-32 h-32 relative -mt-16 border-4 border-white rounded-full overflow-hidden">
-							<img className="object-cover object-center h-32" src={fetchUsereData.profile} />
+							<img
+								className="object-cover object-center h-32"
+								src={fetchUsereData.profile}
+							/>
 						</div>
 						<div className="text-center mt-2">
-							<h2 className="font-semibold text-white">{fetchUsereData.username}</h2>
+							<h2 className="font-semibold text-white">
+								{fetchUsereData.username}
+							</h2>
 
 							<p className="text-gray-400"> bio </p>
 						</div>
@@ -194,7 +408,6 @@ const Chat: React.FC = () => {
 						</div>
 					</div>
 				</div>
-
 			)}
 		</div>
 	);
