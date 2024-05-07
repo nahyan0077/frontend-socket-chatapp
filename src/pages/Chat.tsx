@@ -184,7 +184,7 @@ const Chat: React.FC = () => {
 				receiverId: chatRoom.receiverId,
 			});
 
-			const response = await axiosInstance.post(
+			await axiosInstance.post(
 				"/message/create-message",
 				msgBody
 			);
