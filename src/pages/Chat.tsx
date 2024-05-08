@@ -12,6 +12,8 @@ import { BsInstagram } from "react-icons/bs";
 import { FaGithub } from "react-icons/fa";
 import { FaLinkedin } from "react-icons/fa6";
 import { Socket, io } from "socket.io-client";
+import VideocamIcon from '@mui/icons-material/Videocam';
+import CallIcon from '@mui/icons-material/Call';
 
 interface ChatMessage {
 	_id: string;
@@ -46,14 +48,14 @@ const Chat: React.FC = () => {
 	const fetchUsereData = useSelector((state: any) => state.user.userData);
 	const [onlineUsers, setOnlineUsers] = useState([]);
 	const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-	const [typing, setTyping] = useState< {
-		msg: string,
-		senderId: string,
-		receiverId: string,
-		status: boolean,
-	} >();
+	const [typing, setTyping] = useState<{
+		msg: string;
+		senderId: string;
+		receiverId: string;
+		status: boolean;
+	}>();
 
-	const messagesEndRef = useRef<HTMLDivElement>(null);
+	const messagesEndRef1 = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
 		scrollToBottom();
@@ -64,6 +66,10 @@ const Chat: React.FC = () => {
 			messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
 		}
 	};
+
+	const [searchQuery, setSearchQuery] = useState(""); // State for search query
+
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
 	const logout = async () => {
 		await axiosInstance
@@ -106,17 +112,19 @@ const Chat: React.FC = () => {
 		});
 
 		socket.on("get-messages", (reseivedData: any) => {
-			console.log("chat ress dat", reseivedData);
-
 			setChatMessages((prev) => [...prev, reseivedData]);
 		});
 
-		socket.on("typing", (res: any) => {
-			console.log(res,"typing res");
-			
-			setTyping(res);
-		});
+		let typingTimeout: ReturnType<typeof setTimeout>;
 
+		socket.on("typing", (res: any) => {
+			setTyping(res);
+			clearTimeout(typingTimeout);
+
+			typingTimeout = setTimeout(() => {
+				setTyping(undefined);
+			}, 3000);
+		});
 
 		return () => {
 			socket.disconnect();
@@ -168,6 +176,36 @@ const Chat: React.FC = () => {
 		fetchMessages();
 	}, [chatRoom.chatId]);
 
+
+	const fetchUsers = async () => {
+        try {
+            let response = await axiosInstance.get("/chats/get-all-users");
+            const filteredUsers = response.data.data.filter(
+                (user: any) =>
+                    user._id !== fetchUsereData._id &&
+                    user.username.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+            setAllUsers(filteredUsers);
+            if (filteredUsers.length > 0 && !receiverData.username) {
+                setReceiverData({
+                    username: filteredUsers[0].username,
+                    profile: filteredUsers[0].profile,
+                });
+            }
+        } catch (error) {
+            console.error("Fetch users error:", error);
+        }
+    };
+
+    const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
+        setSearchQuery(e.target.value);
+    };
+
+    useEffect(() => {
+        fetchUsers();
+    }, [searchQuery]);
+
+
 	const sendMessage = async () => {
 		console.log(message, "message issss");
 		if (message.trim()) {
@@ -184,10 +222,7 @@ const Chat: React.FC = () => {
 				receiverId: chatRoom.receiverId,
 			});
 
-			await axiosInstance.post(
-				"/message/create-message",
-				msgBody
-			);
+			await axiosInstance.post("/message/create-message", msgBody);
 
 			const allMsgRes = await axiosInstance.get(
 				`/message/get-all-messages/${chatRoom.chatId}`
@@ -213,7 +248,7 @@ const Chat: React.FC = () => {
 	};
 
 	return (
-		<div className="flex flex-col md:flex-row h-[100vh] ">
+		<div className="min-h-screen flex flex-col md:flex-row  ">
 			<Confirm
 				className="0"
 				isOpen={open}
@@ -230,10 +265,12 @@ const Chat: React.FC = () => {
 				{/* User List Container */}
 				<div className="flex flex-col h-full">
 					{/* Header */}
-					<div className="bg-green-900 text-gray-600 p-3 flex justify-between items-center">
+					<div ref={messagesEndRef1 } className="bg-green-900 text-gray-600 p-3 flex justify-between items-center">
 						{/* Search Bar */}
 						<input
 							type="text"
+							
+							onChange={handleSearchChange}
 							placeholder="Search users..."
 							className="w-full mt-2 px-2 py-1 border bg-green-800 border-green-800 rounded-3xl focus:outline-none text-gray-200"
 						/>
@@ -251,6 +288,7 @@ const Chat: React.FC = () => {
 							</div>
 						</div>
 					</div>
+						<div className="	border-t -mb-5 border-gray-400"></div>;
 					{/* Body users list */}
 
 					{allUsers.map((data: any) => (
@@ -270,7 +308,7 @@ const Chat: React.FC = () => {
 									<div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
 								)}
 							</div>
-							<div className="border-t -mb-5 border-gray-400"></div>;
+							<div className="border-t -mb-6 border-gray-400"></div>;
 						</React.Fragment>
 					))}
 				</div>
@@ -289,13 +327,22 @@ const Chat: React.FC = () => {
 								className="w-8 h-8 mr-2 rounded-full"
 							/>
 							{/* User Name */}
-							<div className="font-semibold">{receiverData.username}</div>
+							<div className="font-semibold">
+								{receiverData.username}
+								{typing && typing.status ? (
+									<div className="text-sm text-green-200">
+										typing<span className="animate-pulse">...</span>
+									</div>
+								) : (
+									<div className="text-sm text-green-200"> {"  "} </div>
+								)}
+							</div>
 						</div>
 						{/* Online Status */}
-						<div>
-							{typing && typing.status ? (
-								<div className="text-xs text-green-200">typing....</div>
-							) : null}
+						<div className="flex items-center space-x-4 mr-4" >
+
+						<CallIcon/>
+						<VideocamIcon/>
 						</div>
 					</div>
 					{/* Chat Body */}

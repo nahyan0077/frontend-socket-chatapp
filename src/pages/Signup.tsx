@@ -35,7 +35,19 @@ function Signup() {
 	};
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-green-500 px-4">
+				<div className="min-h-screen flex flex-col items-center justify-center -mt-9 px-4">
+			{/* Logo */}
+
+
+			{/* Name as Image */}
+			<div className="mb-6">
+				<img
+					src="/love.png" // Replace "name.png" with the path to your name image
+					alt="Name"
+					className="h-48 -mb-9"
+				/>
+			
+			</div>
 			<div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
 				<div className="mb-6">
 					<div className="bg-green-500 rounded-t-lg p-4">

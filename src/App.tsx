@@ -1,4 +1,4 @@
-import "./index.css";
+
 import "./App.css";
 import { axiosInstance } from "./axios";
 import Login from "./pages/Login";
