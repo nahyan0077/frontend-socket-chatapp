@@ -112,6 +112,8 @@ const Chat: React.FC = () => {
 		});
 
 		socket.on("get-messages", (reseivedData: any) => {
+			console.log(reseivedData,"message reach test-->");
+			
 			setChatMessages((prev) => [...prev, reseivedData]);
 		});
 
@@ -331,7 +333,7 @@ const Chat: React.FC = () => {
 								{receiverData.username}
 								{typing && typing.status ? (
 									<div className="text-sm text-green-200">
-										typing<span className="animate-pulse">...</span>
+										typing<span className="animate-ping">...</span>
 									</div>
 								) : (
 									<div className="text-sm text-green-200"> {"  "} </div>
