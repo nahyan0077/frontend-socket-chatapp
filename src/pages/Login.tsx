@@ -22,10 +22,10 @@ function Login() {
 
   const handleSubmit = async (loginData: LoginData) => {
     try {
-      let response = await axiosInstance.post("/log-in", loginData);
+      let response = await axiosInstance.post("/log-in", loginData,{withCredentials: true});
 		console.log(response,"ress");
       if (response.data.success) {
-        const userData = await axiosInstance.get("/fetch-user-data");
+        const userData = await axiosInstance.get("/fetch-user-data",{withCredentials: true});
         dispatch(setUserData(userData.data.user));
 
         toast.success("Login successful!");
