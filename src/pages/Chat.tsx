@@ -14,6 +14,7 @@ import { FaLinkedin } from "react-icons/fa6";
 import { Socket, io } from "socket.io-client";
 import VideocamIcon from '@mui/icons-material/Videocam';
 import CallIcon from '@mui/icons-material/Call';
+import { baseURL } from "../constants/constants";
 
 interface ChatMessage {
 	_id: string;
@@ -25,7 +26,7 @@ interface ChatMessage {
 	date: Date;
 }
 
-const SOCKET_SERVER_URL = "http://localhost:3000";
+const SOCKET_SERVER_URL = baseURL;
 
 const Chat: React.FC = () => {
 	const [open, setOpen] = useState(false);
@@ -129,6 +130,8 @@ const Chat: React.FC = () => {
 		});
 
 		return () => {
+			console.log("socket disconnected");
+			
 			socket.disconnect();
 		};
 	}, []);
@@ -250,7 +253,7 @@ const Chat: React.FC = () => {
 	};
 
 	return (
-		<div className="min-h-screen flex flex-col md:flex-row  ">
+		<div className="max-h-screen flex flex-col md:flex-row ">
 			<Confirm
 				className="0"
 				isOpen={open}
@@ -292,11 +295,14 @@ const Chat: React.FC = () => {
 					</div>
 						<div className="	border-t -mb-5 border-gray-400"></div>;
 					{/* Body users list */}
-
+					<div className="flex-1 overflow-y-auto">
 					{allUsers.map((data: any) => (
 						<React.Fragment key={data._id}>
 							<div
-								onClick={() => chatWithUser(data._id)}
+								onClick={() => {
+									chatWithUser(data._id)
+									setOpenProfile(false)
+								}}
 								className={`flex items-center px-5 py-5 bg-green-900 hover:bg-green-700 text-green-200`}
 								key={data._id}
 							>
@@ -313,6 +319,7 @@ const Chat: React.FC = () => {
 							<div className="border-t -mb-6 border-gray-400"></div>;
 						</React.Fragment>
 					))}
+				</div>
 				</div>
 			</div>
 
