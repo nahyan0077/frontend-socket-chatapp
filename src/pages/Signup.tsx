@@ -4,7 +4,7 @@ import { signUpValidation } from "../validationSchema/signUpValidation";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { toast } from "sonner"; // Importing the toast from Sonner
-import { setUserData } from "../redux/features/userSlice";
+
 
 interface FormValues {
     username: string;
