@@ -253,7 +253,7 @@ const Chat: React.FC = () => {
 	};
 
 	return (
-		<div className="max-h-screen flex flex-col md:flex-row ">
+		<div className="min-h-screen flex flex-col md:flex-row ">
 			<Confirm
 				className="0"
 				isOpen={open}
